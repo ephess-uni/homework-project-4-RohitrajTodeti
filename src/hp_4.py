@@ -55,7 +55,7 @@ def fees_report(infile, outfile):
             date_returned = datetime.strptime(date_returned, formatstr)
             rem = date_due - date_returned
             rem = rem.days
-            if rem > 0:
+            if rem < 0:
                 rem = rem * 0.25
             else:
                 rem = 0.00
