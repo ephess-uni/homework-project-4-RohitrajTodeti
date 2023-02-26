@@ -43,31 +43,41 @@ def add_date_range(values, start_date):
 def fees_report(infile, outfile):
     """Calculates late fees per patron id and writes a summary report to
     outfile."""
-    formatstr = '%m/%d/%Y'
-    fee = dict()
-    with open(infile, newline='') as f:
-        reader = DictReader(f)
-        for row in reader:
-            patron_id = row['patron_id']
-            date_due = row['date_due']
-            date_returned = row['date_returned']
-            date_due = datetime.strptime(date_due, formatstr)
-            date_returned = datetime.strptime(date_returned, formatstr)
-            rem = date_due - date_returned
-            rem = rem.days
-            if rem < 0:
-                rem = rem * 0.25
+  
+    with open(infile) as file:
+        added_list=[]
+        read_csv_obj = DictReader(file)
+        for record in read_csv_obj:
+            temp_dict={}
+            late_fee_days=datetime.strptime(record['date_returned'],'%m/%d/%Y')- datetime.strptime(record['date_due'],'%m/%d/%Y') 
+            if(late_fee_days.days>0):
+                temp_dict["patron_id"]=record['patron_id']
+                temp_dict["late_fees"]=round(late_fee_days.days*0.25, 2)
+                added_list.append(temp_dict)
             else:
-                rem = 0.00
-            rem = format(rem,".2f")
-            fee[patron_id] = rem
-    with open(outfile, 'w', newline='') as f:
-        fieldnames = ['patron_id','late_fees']
-        writer = DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        for key in fee:
-            writer.writerow({'patron_id' : key, 'late_fees' : fee[key]})
+                temp_dict["patron_id"]=record['patron_id']
+                temp_dict["late_fees"]=float(0)
+                added_list.append(temp_dict)
+                
+        temp_dict_2 = {}
+        for dict in added_list:
+            key = (dict['patron_id'])
+            temp_dict_2[key] = temp_dict_2.get(key, 0) + dict['late_fees']
+        updated_list = [{'patron_id': key, 'late_fees': value} for key, value in temp_dict_2.items()]
+        
+        for dict in updated_list:
+            for key,value in dict.items():
+                if key == "late_fees":
+                    if len(str(value).split('.')[-1]) != 2:
+                        dict[key] = str(value)+"0"
 
+
+   
+    with open(outfile,"w", newline="") as file:
+        col = ['patron_id', 'late_fees']
+        writer = DictWriter(file, fieldnames=col)
+        writer.writeheader()
+        writer.writerows(updated_list)
 
 # The following main selection block will only run when you choose
 # "Run -> Module" in IDLE.  Use this section to run test code.  The
