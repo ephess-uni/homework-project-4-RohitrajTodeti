@@ -4,69 +4,70 @@ from datetime import datetime, timedelta
 from csv import DictReader, DictWriter
 from collections import defaultdict
 
-
 def reformat_dates(old_dates):
     """Accepts a list of date strings in format yyyy-mm-dd, re-formats each
     element to a format dd mmm yyyy--01 Jan 2001."""
-    new_dates = []
-    for date in dates:
-        datetime_obj = datetime.datetime.strptime(date, '%Y-%m-%d')
-        new_date = datetime_obj.strftime('%d %b %Y')
-        new_dates.append(new_date)
+    new_dates = list()
+    formatstr = '%Y-%m-%d'
+    for i in old_dates:
+        start = datetime.strptime(i, formatstr)
+        start = start.strftime('%d %b %Y')
+        new_dates.append(str(start))
     return new_dates
-
 
 def date_range(start, n):
     """For input date string `start`, with format 'yyyy-mm-dd', returns
     a list of of `n` datetime objects starting at `start` where each
     element in the list is one day after the previous."""
     if not isinstance(start, str):
-        raise TypeError("start must be a string")
+        raise TypeError("Only string is valid input for start")
     if not isinstance(n, int):
-        raise TypeError("n must be an integer")
-    dates = []
-    date_obj = datetime.datetime.strptime(start, '%Y-%m-%d')
+        raise TypeError("Only int is valid input for n")
+    added_dates = list()
+    formatstr = "%Y-%m-%d"
+    start = datetime.strptime(start, formatstr)
     for i in range(n):
-        dates.append(date_obj)
-        date_obj += datetime.timedelta(days=1)
-    return dates
-
+        added_dates.append(start)
+        start = start + timedelta(days=1)
+    return added_dates
 
 def add_date_range(values, start_date):
     """Adds a daily date range to the list `values` beginning with
     `start_date`.  The date, value pairs are returned as tuples
     in the returned list."""
-      dates = date_range(start_date, len(values))
-    return list(zip(dates, values))
-
-import csv
-import datetime
+    dates = date_range(start_date, len(values))
+    con_dates = tuple(dates)
+    con_values = tuple(values)
+    return list(zip(con_dates, con_values))
 
 def fees_report(infile, outfile):
     """Calculates late fees per patron id and writes a summary report to
     outfile."""
-    import csv
-import datetime
-
-def fees_report(infile, outfile):
-    with open(infile, 'r') as fin, open(outfile, 'w', newline='') as fout:
-        reader = csv.DictReader(fin)
-        writer = csv.writer(fout)
-        writer.writerow(['patron_id', 'late_fees'])
-        late_fees = {}
+    formatstr = '%m/%d/%Y'
+    fee = dict()
+    with open(infile, newline='') as f:
+        reader = DictReader(f)
         for row in reader:
             patron_id = row['patron_id']
-            date_due = datetime.datetime.strptime(row['date_due'], '%Y-%m-%d')
-            date_returned = datetime.datetime.strptime(row['date_returned'], '%Y-%m-%d')
-            if date_returned > date_due:
-                days_late = (date_returned - date_due).days
-                late_fee = days_late * 0.25
-                if patron_id in late_fees:
-                    late_fees[patron_id] += late_fee
-                else:
-                    late_fees[patron_id] = late_fee
-        for patron_id, late_fee in late_fees.items():
-            writer.writerow([patron_id, late_fee])
+            date_due = row['date_due']
+            date_returned = row['date_returned']
+            date_due = datetime.strptime(date_due, formatstr)
+            date_returned = datetime.strptime(date_returned, formatstr)
+            rem = date_due - date_returned
+            rem = rem.days
+            if rem > 0:
+                rem = rem * 0.25
+            else:
+                rem = 0.00
+            rem = format(rem,".2f")
+            fee[patron_id] = rem
+    with open(outfile, 'w', newline='') as f:
+        fieldnames = ['patron_id','late_fees']
+        writer = DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for key in fee:
+            writer.writerow({'patron_id' : key, 'late_fees' : fee[key]})
+
 
 # The following main selection block will only run when you choose
 # "Run -> Module" in IDLE.  Use this section to run test code.  The
@@ -76,7 +77,7 @@ def fees_report(infile, outfile):
 # under the data directory.
 
 if __name__ == '__main__':
-    
+   
     try:
         from src.util import get_data_file_path
     except ImportError:
@@ -92,3 +93,4 @@ if __name__ == '__main__':
     # Print the data written to the outfile
     with open(OUTFILE) as f:
         print(f.read())
+
